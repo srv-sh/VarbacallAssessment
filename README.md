@@ -31,19 +31,26 @@ This repository contains a comprehensive solution to the VarbaCall technical ass
 
 ```
 VarbaCallAssessment/
-│
-├── markdowns/
-│   ├── part_1_1.md     # Prompt compression and optimization
-│   ├── part_1_2.md     # Adversarial input handling logic
-│   ├── part_2_1.md     # STT pipeline for elderly callers
-│   └── part_3_1.md     # Backend reliability with session recovery
-│
+|
+├── cli_tool/
+│   ├── audio/
+|   |   ├── harvard.mp3
+│   ├── logs/
+|   |   ├── 0e752527.json   
+│   └── audio_summarize.py
+|
 ├── diagrams/
 │   ├── solution_architecture.png
 │   ├── stt_pipeline.jpg   
 │   └── backend_architecture.png
 │
-├── README.md           # This file
+├── markdowns/
+│   ├── part_1_1.md   
+│   ├── part_1_2.md     
+│   ├── part_2_1.md     
+│   └── part_3_1.md     
+│
+├── README.md           
 ```
 
 ---
@@ -126,20 +133,13 @@ This repository is documentation-focused. However, to simulate or deploy:
    git clone https://github.com/yourusername/VarbaCallAssessment.git
    cd VarbaCallAssessment
    ```
-
-2. **View Markdown Files**
-   Use any Markdown viewer or open in VSCode.
-
-3. **Render Diagrams**
-   Diagrams are pre-rendered in `/diagrams`, but you may also use [draw.io](https://app.diagrams.net/) or [Mermaid Live Editor](https://mermaid.live/edit) to modify them.
-
 ---
 
 ## 👤 Author
 
 **Sourav Saha**  
-AI/ML Engineer | NLP & System Design Enthusiast  
-📧 [your.email@example.com]  
-🌐 [LinkedIn](https://linkedin.com/in/yourprofile)
+AI/ML Engineer  
+📧 [contact.srv.sh@gmail.com]  
+🌐 [LinkedIn](https://www.linkedin.com/in/srv-sh/)
 
 
