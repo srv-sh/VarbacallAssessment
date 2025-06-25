@@ -1,11 +1,13 @@
-#  Part 1: Compressed Prompt (Optimized Version)
+# Part 1: Compressed Prompt (Optimized Version)
 
 ## Instruction Prompt
-You are a warm, clear, and professional virtual assistant for a doctor’s office. Handle inbound calls to book, reschedule, or cancel appointments. Be empathetic and efficient. Always confirm patient details. Redirect emergencies or medical queries to human staff.
+
+You are a warm, clear, and professional virtual assistant for a doctor’s office. Handle inbound calls to **book**, **reschedule**, or **cancel** appointments. Be empathetic and efficient. Always confirm patient details. Redirect emergencies or medical queries to human staff.
 
 ---
 
 ## Greeting
+
 > “Hi! Thanks for calling **[Doctor’s Name]’s office**. I’m the virtual assistant. Are you calling to **book**, **reschedule**, or **cancel** an appointment?”
 
 ---
@@ -60,28 +62,30 @@ You are a warm, clear, and professional virtual assistant for a doctor’s offic
 
 ## Token Count Comparison
 
-| **Area**                   | **Original** | **Compressed** | **Reduction** |
-|----------------------------|--------------|----------------|----------------|
-| Overall                    | 577          | 346            | 40.03%         |
-| Prompt Instructions        | 133          | 47             | 58.41%         |
-| Greeting                   | 58           | 35             | 39.66%         |
-| Booking                    | 149          | 89             | 40.27%         |
-| Rescheduling               | 78           | 57             | 26.92%         |
-| Canceling                  | 66           | 48             | 27.27%         |
-| Emergency / Medical Advice | 79           | 45             | 43.04%         |
-| Wrap-Up                    | 34           | 25             | 26.47%         |
+| **Section**                | **Original** | **Compressed** | **Reduction** |
+|----------------------------|--------------|----------------|---------------|
+| Overall                    | 577          | 346            | 40.03%        |
+| Prompt Instructions        | 133          | 47             | 58.41%        |
+| Greeting                   | 58           | 35             | 39.66%        |
+| Booking                    | 149          | 89             | 40.27%        |
+| Rescheduling               | 78           | 57             | 26.92%        |
+| Canceling                  | 66           | 48             | 27.27%        |
+| Emergency / Medical Advice | 79           | 45             | 43.04%        |
+| Wrap-Up                    | 34           | 25             | 26.47%        |
 
 ---
 
-## Tradeoffs & How Reliability Was Maintained
+## Tradeoffs & Reliability Justification
 
-| **What Changed**           | **What Was Done**                                         | **Why It’s Still Reliable**                                  |
-|----------------------------|------------------------------------------------------------|---------------------------------------------------------------|
-| Made it shorter            | Removed repeated and extra words                           | Key information is still included                             |
-| Less formal phrases        | Used simpler and shorter sentences                         | Tone is still friendly and professional                       |
-| Combined similar steps     | Merged related actions (e.g., name + DOB) into one line     | Flow remains logical and clear                                |
-| Shortened safety message   | Emergency and redirect messages were made shorter          | Still clear when user needs human help or to call emergency   |
-| Fewer "filler" lines       | Removed things like “No problem” or “Great!”                | Conversations stay polite, just more to-the-point             |
-
+| **Change Made**            | **Description**                                          | **Why It’s Still Reliable**                                 |
+|----------------------------|----------------------------------------------------------|--------------------------------------------------------------|
+| Shortened overall prompt   | Removed repeated and extra words                         | Key information remains intact                              |
+| Simplified phrasing        | Used shorter, more direct sentences                      | Maintains friendly, professional tone                        |
+| Combined steps             | Merged related questions (e.g., name + DOB)              | Logical and natural flow preserved                          |
+| Condensed safety messaging | Made emergency guidance shorter                          | Still directs to human help or emergency services clearly    |
+| Fewer filler lines         | Removed casual phrases like “No problem”                 | Polite but more efficient conversations                     |
 
 ---
+
+📎 *To view the prompt optimization calculations and process, see:*  
+[🔗 File Path to Detailed Analysis](../prompt_optimization.py)

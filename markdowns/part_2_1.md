@@ -1,108 +1,118 @@
 # Part 2: Robust STT Pipeline for Elderly Callers with Accents & Background Noise
 
-![Figure 1: STT/TTS system architectur](../diagrams/stt_pipeline.jpg)
-*Figure 1: STT/TTS system architecture*
+![Figure 1: STT/TTS System Architecture](../diagrams/stt_pipeline.jpg)  
+*Figure 1: Layered architecture for STT/TTS reliability*
 
-A layered architecture to handle challenges in real-time voice interaction with elderly callers, especially those with foreign accents and noisy environments.
+This architecture addresses challenges in real-time voice interaction, particularly with elderly callers who may speak with strong accents (e.g., Bengali, Spanish) and use noisy landline environments.
 
+---
 
 ## High-Level Strategy
 
-- **Voice Activity Detection (VAD)**
-- **Grace-based speaker completion logic**
-- **Audio preprocessing** (denoising, normalization, etc.)
-- **Post-STT correction** (accent correction, sentence segmentation)
-- **Semantic validation** before intent parsing
+- Real-time **Voice Activity Detection (VAD)**
+- Grace-based **pause handling**
+- Robust **audio preprocessing**
+- Intelligent **post-STT correction**
+- **Semantic validation** before intent resolution
 
+---
 
-## Step-by-Step Breakdown
+## Pipeline Breakdown
 
 ### 1. Audio Stream Input
-Captures incoming live audio (from landline or mobile).
+Captures live audio from callers using mobile or landline devices.
 
 ---
 
 ### 2. Voice Activity Detection (VAD)
-- Uses `webrtcvad` or `silero-vad`.
-- Triggers after **>1s of silence**, assuming sentence end.
+Detects active speech segments using:
+- [`webrtcvad`](https://github.com/wiseman/py-webrtcvad)
+- [`silero-vad`](https://github.com/snakers4/silero-vad)
+
+**Triggers** after ≥1 second of silence to mark sentence boundaries.
 
 ---
 
-### 3. Grace Period Wait (300 ms)
-- Prevents early cutoff for elderly speakers with long pauses.
-- Configurable based on age/demographics.
+### 3. Grace Period Wait (300ms)
+Implements a short delay before assuming the speaker is finished — especially useful for elderly callers with slow or hesitant speech patterns.
 
 ---
 
-### 4. Still Talking Check
-- If speech **resumes**, keep streaming.
-- If not, move to **preprocessing**.
+### 4. Still-Talking Check
+If speech resumes:
+- → Continue streaming  
+If silence persists:
+- → Proceed to **audio preprocessing**
 
 ---
 
 ### 5. Audio Preprocessing
 
-| Step                | Purpose                                        | Tools/Models                                      |
-|---------------------|------------------------------------------------|---------------------------------------------------|
-| Noise Reduction     | Remove static, hum from landlines              | `noisereduce`, `RNNoise`                          |
-| Bandpass Filtering  | Retain human voice freq (300–3400 Hz)          | `scipy.signal.butter`, `librosa.effects.bandpass` |
-| Volume Normalization| Equalize loud/soft voices                      | `pydub`, `librosa`, `SoX`                         |
-| Silence Trimming    | Trim silence before/after speech               | `librosa.effects.trim`, `pydub.silence`           |
-| Resampling & Format | Standardize to 16kHz mono WAV                  | `ffmpeg`, `torchaudio.transforms.Resample`        |
+| **Step**              | **Purpose**                                     | **Tools / Models**                                      |
+|-----------------------|--------------------------------------------------|----------------------------------------------------------|
+| Noise Reduction       | Remove static/hiss from poor-quality lines       | `noisereduce`, `RNNoise`                                 |
+| Bandpass Filtering    | Focus on human voice frequencies (300–3400 Hz)   | `scipy.signal`, `librosa`                                |
+| Volume Normalization  | Equalize inconsistent volume levels              | `pydub`, `librosa`, `SoX`                                |
+| Silence Trimming      | Eliminate trailing/leading silences              | `pydub.silence`, `librosa.effects.trim`                  |
+| Resampling & Format   | Standardize to 16kHz mono WAV                    | `ffmpeg`, `torchaudio.transforms.Resample`               |
 
 ---
 
-### 6.  STT & Post-Processing
+### 6. Speech-to-Text (STT) & Post-Processing
 
-| Step                   | Purpose                                         | Tools/Models                                   |
-|------------------------|--------------------------------------------------|------------------------------------------------|
-| STT                    | Transcribe speech                               | **Whisper Large v3** / **Google STT**         |
-| Punctuation Restoration| Add missing punctuation                         | `punctuator2`, `DeepSegment`, `T5-small`       |
-| Accent Correction      | Fix phonetic quirks (e.g., Bengali/Spanish)     | Rule-based + fine-tuned `BERT` or adapters     |
-| Sentence Segmentation  | Break into logical units                        | `spaCy`, `nltk.sent_tokenize`                  |
-| Confidence Filtering   | Remove low-confidence output                    | `Whisper` tokens' `avg_logprob`, `no_speech_prob` |
+| **Step**                | **Purpose**                                      | **Tools / Models**                                      |
+|-------------------------|--------------------------------------------------|----------------------------------------------------------|
+| STT                     | Core transcription engine                        | `Whisper Large v3`, `Google STT`                         |
+| Punctuation Restoration | Add natural punctuation for readability          | `punctuator2`, `DeepSegment`, `T5-small`                 |
+| Accent Correction       | Normalize regional mispronunciations             | Fine-tuned `BERT`, rules, adapters                       |
+| Sentence Segmentation   | Break output into clean, logical chunks          | `spaCy`, `nltk.sent_tokenize`                            |
+| Confidence Filtering    | Discard unreliable segments                      | `avg_logprob`, `no_speech_prob` from Whisper output      |
 
 ---
 
 ### 7. Semantic Validation
 
-- Checks if transcription **matches a valid intent** (e.g., booking, canceling).
-- If **YES** → pass to Dialogue Manager.
-- If **NO** → **re-prompt** without restarting session.
+Performs intent matching to determine if transcription yields a **valid action** (e.g., booking, canceling).  
+- ✅ Valid → Forward to Dialogue Manager  
+- ❌ Invalid → Re-prompt user without restarting session
 
 ---
 
-## Common Challenges & How They’re Handled
+## Reliability Challenges & Mitigations
 
-| Challenge                              | How It’s Handled                                                                 |
-|----------------------------------------|-----------------------------------------------------------------------------------|
-| Elderly speech with long pauses        | Grace period + still-talking logic prevents early cutoff                         |
-| Strong accents (e.g., Bengali/Spanish) | Accent correction + Whisper multilingual robustness                              |
-| Noisy static from landlines            | Noise reduction + bandpass filtering                                             |
-| Soft/inconsistent volume               | Volume normalization ensures clarity                                             |
-| Mispronunciation / unclear phrasing    | Semantic fallback + live context flushing allows clarification without restart   |
-
----
-
-## Concrete STT Setup
-
-### VAD
-- `webrtcvad`, `silero-vad`  
-→ Real-time lightweight VAD models
-
-### STT
-- `Whisper Large v3`, `Google STT`  
-→ Handles accents and noisy environments
+| **Challenge**                        | **Mitigation Strategy**                                               |
+|--------------------------------------|------------------------------------------------------------------------|
+| Long pauses in elderly speech        | Grace timing + “still-talking” checks                                 |
+| Strong non-native accents            | Whisper’s multilingual model + custom accent correction               |
+| Background static / line distortion  | Denoising and bandpass filtering                                      |
+| Inconsistent voice loudness          | Volume normalization                                                  |
+| Mispronunciations / vague phrasing   | Semantic fallback prompts + no session reset                          |
 
 ---
 
-## Evaluation of Each Stage
+## STT Pipeline Configuration
 
-| Metric                 | Purpose                            | Toolset                                  |
-|------------------------|------------------------------------|------------------------------------------|
-| Signal-to-Noise Ratio  | Evaluate denoising effectiveness   | `librosa`, `soundfile`                   |
-| Word Error Rate (WER)  | STT accuracy vs ground truth       | `jiwer`, `asr_evaluation`                |
-| BLEU / ROUGE           | Match post-processed text to gold  | `nltk`, `rouge_score`                    |
-| Human Validation Score | Accent correction, grammar review  | Manual/crowd-sourced validation          |
+###  VAD Layer
+- Tools: `webrtcvad`, `silero-vad`  
+- Role: Lightweight, real-time voice activity gating
+
+###  STT Engine
+- Models: `Whisper Large v3`, `Google STT`  
+- Role: Robust handling of accents, noisy conditions, long-form speech
 
 ---
+
+##  Evaluation Metrics
+
+| **Metric**              | **Purpose**                               | **Toolset**                        |
+|-------------------------|--------------------------------------------|------------------------------------|
+| Signal-to-Noise Ratio   | Quantifies preprocessing noise suppression | `librosa`, `soundfile`             |
+| Word Error Rate (WER)   | Measures STT transcription accuracy        | `jiwer`, `asr_evaluation`          |
+| BLEU / ROUGE            | Assesses fidelity of post-processed output | `nltk`, `rouge_score`              |
+| Human Review Score      | Validates clarity of accent and phrasing   | Manual QA / Crowdsource review     |
+
+---
+
+ **Conclusion:**  
+This pipeline balances robustness, speed, and clarity. Through adaptive pause handling, high-accuracy transcription, and accent-aware correction, it ensures a seamless experience for elderly users with diverse speech patterns.
+

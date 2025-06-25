@@ -1,108 +1,138 @@
+# 🛠️ Part 3: Backend Reliability – Call Session Recovery Architecture
 
-# Part 3: Backend Reliability (System Integration)
+##  Scenario Overview
 
-## Scenario Overview
-
-> A **patient calls** in to **book a flu shot**.  
+> A **patient calls** to **book a flu shot**.  
 > The **call drops mid-way**.  
-> The **patient calls back** later.  
-> The **system resumes the call where it left off**.
+> The **patient calls back later**.  
+> The **system resumes the conversation from where it left off**.
+
+This architecture ensures a seamless experience by maintaining call context and resuming incomplete sessions without frustrating repetition for the caller.
 
 ---
 
-## Solution Architecture
+##  Solution Architecture
 
-![Figure 1: STT/TTS system architectur](../diagrams/solution_architecture.png)
-*Figure 2: Solution Architecture*
+![Solution Architecture Diagram](../diagrams/solution_architecture.png)  
+*Figure 1: Persistent Session Recovery System*
 
-### Initial Call Flow (Patient calls to book flu shot):
+###  Initial Call Flow (Flu Shot Booking)
 
-1. **Patient calls in → Voice Gateway receives the call**
-2. **Voice Gateway routes to Call Router**
-3. **Speech-to-Text (STT)** converts the patient's voice to text
-4. **Session Manager** checks:
-   - “IF session exists” → **NO (new call)**
-5. **New session created** in Redis Cache with:
-   - Session ID
-   - Call state (`booking_flu_shot`)
-   - Partial conversation log
-6. **GPT Service** handles the booking dialog and stores:
-   - Context
-   - Booking progress
-7. **Call drops mid-way**
-   - Session remains active in Redis (incomplete)
+1. **Incoming Call Received**  
+   - Handled by **Voice Gateway**
 
----
+2. **Routing**  
+   - Call forwarded to **Call Router**
 
-### Call Recovery Flow (Patient calls back):
+3. **Speech Transcription**  
+   - **STT Engine** (e.g., Whisper) transcribes voice to text
 
-1. **Patient calls again → Voice Gateway → Call Router → STT**
-2. **Session Manager** checks:
-   - “IF session exists” → **YES**
-3. **Recover session from Redis**, including:
-   - Previous call state
-   - GPT context
-   - Booking progress
-4. **GPT resumes dialog**:
-   - _“Welcome back! You were booking a flu shot. We were at selecting a date…”_
-5. **Patient completes booking**
-6. **If booking completed**, then:
-   - CRM system updates:
-     - Appointment info
-     - Patient details
-     - Interaction history
-7. **TTS responds** with confirmation to patient
-8. **Session marked as complete**
-9. **Session deleted** from Redis
+4. **Session Check (Session Manager)**  
+   - Session lookup in Redis  
+   - If session **does not exist** → create a **new session**
+
+5. **New Session Created**  
+   - Stored in **Redis** with:
+     - `Session ID` (UUID)
+     - `Call State`: e.g., `booking_flu_shot`
+     - Partial booking information
+     - GPT dialog history (partial context)
+
+6. **Conversation Progresses**  
+   - **GPT Service** manages dialog and updates context  
+   - Patient is asked for appointment date, time, etc.
+
+7. **Call Drop Occurs**  
+   - Session marked **incomplete** but retained in Redis
 
 ---
 
-## Flow Architecture
+##  Call Recovery Flow (Patient Calls Back)
 
-![Figure 1: STT/TTS system architectur](../diagrams/flow_architecture.png)
-*Figure 2: Flow Chart*
+1. **Patient Reconnects**  
+   - Voice Gateway receives second call  
+   - Routed through Call Router to **Session Manager**
 
+2. **Session Check**  
+   - Redis queried for existing session  
+   - If session **exists** → retrieve session context
 
-### Phase 1: Initial Call (Before Drop)
+3. **Session Restoration**  
+   - Restore:
+     - Booking state
+     - GPT dialog history
+     - Any provided patient information
 
-- **Patient calls in**
-  - Dials healthcare to book flu shot
-- **Voice Gateway** receives incoming call
-  - Recognizes new session
-- **Call Router** forwards to **Session Manager**
-- **Session Manager**:
-  - Generates `Session ID` (e.g., UUID)
-  - Initializes session context
+4. **GPT Resumes Dialog Seamlessly**  
+   - Example: _“Welcome back! You were booking a flu shot. We were about to select a date…”_
 
-#### Conversation Begins
-- Starts flu shot booking flow
-- Prompts: "What date would you prefer?"
-- Saves progress:
-  - Phone number
-  - Stage: `booking_flu_shot`
-  - GPT conversation history
-  - Partial booking data
+5. **Booking Completed**  
+   - Final appointment details confirmed
 
-#### Call Drops
-- Session remains in Redis
-- Marked incomplete
+6. **CRM Update**  
+   - Sync with backend:
+     - Appointment scheduled
+     - Patient information logged
+     - Full call history updated
+
+7. **Confirmation Sent**  
+   - **TTS Service** delivers confirmation response to caller
+
+8. **Session Finalization**  
+   - Marked as **complete**
+   - Session data is deleted from Redis
 
 ---
 
-### Phase 2: Call Recovery (Patient Calls Back)
+##  End-to-End Flow Diagram
 
-- **Same phone number** detected
-- **Voice Gateway → Call Router → Session Manager**
-- **Redis queried** for active sessions
+![Flow Diagram](../diagrams/flow_architecture.png)  
+*Figure 2: Detailed Call Session Flow*
 
-#### Session Found:
-- GPT context + call state restored
-- Continues dialog from where left off:
-  - _“Welcome back! You were booking a flu shot for next week…”_
+---
 
-#### Final Steps:
-- Patient completes booking
-- Session Manager updates:
-  - CRM with appointment + patient info
-  - Logs both call sessions
-- Deletes session from Redis after completion
+##  Phase 1: Initial Call (Before Drop)
+
+| **Step**                  | **Details**                                                                 |
+|---------------------------|------------------------------------------------------------------------------|
+| Patient calls             | Dials clinic to book flu shot                                               |
+| Voice Gateway             | Accepts and routes the call                                                 |
+| Call Router               | Forwards to **Session Manager**                                             |
+| Session Manager           | Creates new `Session ID` (UUID), stores in **Redis**                        |
+| Booking initiated         | GPT assistant begins booking process, e.g., _“What date would you prefer?”_ |
+| Session partially filled  | Captures phone number, intent stage, conversation context                   |
+| Call drop                 | Session remains cached in Redis, marked **incomplete**                      |
+
+---
+
+##  Phase 2: Call Recovery (Patient Calls Back)
+
+| **Step**                  | **Details**                                                                 |
+|---------------------------|------------------------------------------------------------------------------|
+| Caller ID matched         | Based on same phone number or session fingerprint                           |
+| Redis queried             | Looks for active sessions                                                   |
+| Session found             | Restores GPT context + previous dialog state                                |
+| GPT resumes seamlessly    | _“Welcome back! You were booking a flu shot for next week…”_                |
+| Booking completed         | Appointment time confirmed                                                  |
+| CRM updated               | Syncs data across patient records and logs                                  |
+| TTS response delivered    | Voice confirmation to patient                                               |
+| Session closed            | Session deleted from Redis                                                  |
+
+---
+
+##  Key Components
+
+| **Component**    | **Responsibility**                                                                 |
+|------------------|-------------------------------------------------------------------------------------|
+| Voice Gateway    | Ingests and routes all inbound calls                                                |
+| Call Router      | Distributes call to appropriate service                                             |
+| Session Manager  | Maintains session state, handles recovery, manages Redis integration                |
+| Redis Cache      | Stores in-progress session data (TTL managed)                                       |
+| GPT Service      | Maintains natural dialog, handles context continuation                              |
+| CRM System       | Syncs appointments and patient interaction history                                  |
+| STT / TTS        | Converts voice to text (Whisper / Deepgram) and back to voice for confirmation      |
+
+---
+
+ **Conclusion:**  
+This system provides a **robust, context-aware** call experience. Patients can continue their booking journey **without repeating themselves**, and staff systems remain **synchronized**, enhancing operational efficiency and caller satisfaction.
